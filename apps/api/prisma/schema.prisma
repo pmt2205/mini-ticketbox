@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  HOLDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  SOLD
+}
+
+enum OrderStatus {
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model TicketType {
+  id            String        @id @default(uuid()) @db.Uuid
+  name          String        @unique
+  price         Decimal       @db.Decimal(12, 2)
+  totalQuantity Int           @map("total_quantity")
+  soldQuantity  Int           @default(0) @map("sold_quantity")
+  heldQuantity  Int           @default(0) @map("held_quantity")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  reservations  Reservation[]
+  seats         Seat[]
+
+  @@map("ticket_types")
+}
+
+model Reservation {
+  id           String            @id @default(uuid()) @db.Uuid
+  ticketTypeId String            @map("ticket_type_id") @db.Uuid
+  userId       String            @map("user_id")
+  customerName String?           @map("customer_name")
+  customerEmail String?          @map("customer_email")
+  customerPhone String?          @map("customer_phone")
+  quantity     Int
+  status       ReservationStatus @default(HOLDING)
+  expiresAt    DateTime          @map("expires_at")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+  ticketType   TicketType        @relation(fields: [ticketTypeId], references: [id])
+  seats        Seat[]
+  order        Order?
+  payments     Payment[]
+
+  @@index([status, expiresAt])
+  @@index([userId, status])
+  @@map("reservations")
+}
+
+model Seat {
+  id            String       @id @default(uuid()) @db.Uuid
+  ticketTypeId  String       @map("ticket_type_id") @db.Uuid
+  reservationId String?      @map("reservation_id") @db.Uuid
+  code          String       @unique
+  rowLabel      String       @map("row_label")
+  seatNumber    Int          @map("seat_number")
+  status        SeatStatus   @default(AVAILABLE)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  ticketType    TicketType   @relation(fields: [ticketTypeId], references: [id])
+  reservation   Reservation? @relation(fields: [reservationId], references: [id])
+
+  @@unique([ticketTypeId, rowLabel, seatNumber])
+  @@index([ticketTypeId, status])
+  @@index([reservationId])
+  @@map("seats")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  fullName     String   @map("full_name")
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Order {
+  id            String      @id @default(uuid()) @db.Uuid
+  reservationId String      @unique @map("reservation_id") @db.Uuid
+  userId        String      @map("user_id")
+  totalAmount   Decimal     @map("total_amount") @db.Decimal(12, 2)
+  status        OrderStatus @default(PAID)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  reservation   Reservation @relation(fields: [reservationId], references: [id])
+  payments      Payment[]
+
+  @@map("orders")
+}
+
+model Payment {
+  id             String        @id @default(uuid()) @db.Uuid
+  orderId        String?       @map("order_id") @db.Uuid
+  reservationId  String        @map("reservation_id") @db.Uuid
+  provider       String
+  status         PaymentStatus
+  idempotencyKey String        @unique @map("idempotency_key")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  order          Order?        @relation(fields: [orderId], references: [id])
+  reservation    Reservation   @relation(fields: [reservationId], references: [id])
+
+  @@index([reservationId])
+  @@map("payments")
+}

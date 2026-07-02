@@ -1,0 +1,4 @@
+-- No-op migration.
+-- This directory was generated before the orders/payments tables existed in
+-- migration history, so altering those tables here breaks shadow database
+-- replay. The actual tables are created in 20260630133000_add-orders-payments.

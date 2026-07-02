@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mini-ticketbox-postgres
+    environment:
+      POSTGRES_USER: ticketbox
+      POSTGRES_PASSWORD: ticketbox
+      POSTGRES_DB: mini_ticketbox
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketbox -d mini_ticketbox"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mini-ticketbox-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./docker/redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mini-ticketbox-api
+    profiles: ["app"]
+    environment:
+      DATABASE_URL: postgresql://ticketbox:ticketbox@postgres:5432/mini_ticketbox?schema=public
+      REDIS_URL: redis://redis:6379
+      PORT: 3001
+      RESERVATION_TTL_SECONDS: 300
+      RESERVATION_RELEASE_BATCH_SIZE: 100
+      RESERVATION_RELEASE_CRON: "*/15 * * * * *"
+      WEB_ORIGIN: http://localhost:3000
+      JWT_SECRET: replace-with-a-long-random-secret
+      JWT_EXPIRES_IN_SECONDS: 86400
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: mini-ticketbox-web
+    profiles: ["app"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages

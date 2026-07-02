@@ -1,0 +1,31 @@
+{
+  "name": "mini-ticketbox",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "npm@10.8.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @mini-ticketbox/api",
+    "dev:api": "npm run dev --workspace @mini-ticketbox/api",
+    "dev:web": "npm run dev --workspace @mini-ticketbox/web",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspace @mini-ticketbox/api",
+    "test:concurrency": "npm run test:concurrency --workspace @mini-ticketbox/api",
+    "db:migrate": "npm run db:migrate --workspace @mini-ticketbox/api",
+    "db:seed": "npm run db:seed --workspace @mini-ticketbox/api"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2"
+  },
+  "dependencies": {
+    "@nestjs/platform-socket.io": "^10.4.22",
+    "@nestjs/websockets": "^10.4.22",
+    "@reduxjs/toolkit": "^2.12.0",
+    "react-redux": "^9.3.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3"
+  }
+}
